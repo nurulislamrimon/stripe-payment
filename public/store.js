@@ -31,16 +31,42 @@ function ready() {
 const stripeHandler = StripeCheckout.configure({
   key: stripePublicKey,
   locale: "auto",
-  token: function (token) {},
+  token: function (token) {
+    const items = [];
+    const cartItems = document.getElementsByClassName("cart-items")[0];
+    const cartRows = cartItems.getElementsByClassName("cart-row");
+    for (let i = 0; i < cartRows.length; i++) {
+      const cartRow = cartRows[i];
+      const quantityElement = cartRow.getElementsByClassName(
+        "cart-quantity-input"
+      )[0];
+      const quantity = quantityElement.value;
+      const id = cartRow.dataset.itemId;
+      items.push({ id, quantity });
+
+      fetch("/purchase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ items, stripeTokenId: token.id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          alert(data.message);
+          var cartItems = document.getElementsByClassName("cart-items")[0];
+          while (cartItems.hasChildNodes()) {
+            cartItems.removeChild(cartItems.firstChild);
+          }
+          updateCartTotal();
+        })
+        .catch((e) => console.log(e));
+    }
+  },
 });
 
 function purchaseClicked() {
-  //   alert("Thank you for your purchase");
-  //   var cartItems = document.getElementsByClassName("cart-items")[0];
-  //   while (cartItems.hasChildNodes()) {
-  //     cartItems.removeChild(cartItems.firstChild);
-  //   }
-  //   updateCartTotal();
   const pariceElement = document.getElementsByClassName("cart-total-price")[0];
   const price = parseFloat(pariceElement.innerText.replace("$", "")) * 100;
   stripeHandler.open({
@@ -68,12 +94,14 @@ function addToCartClicked(event) {
   var title = shopItem.getElementsByClassName("shop-item-title")[0].innerText;
   var price = shopItem.getElementsByClassName("shop-item-price")[0].innerText;
   var imageSrc = shopItem.getElementsByClassName("shop-item-image")[0].src;
-  addItemToCart(title, price, imageSrc);
+  var id = shopItem.dataset.itemId;
+  addItemToCart(title, price, imageSrc, id);
   updateCartTotal();
 }
 
-function addItemToCart(title, price, imageSrc) {
+function addItemToCart(title, price, imageSrc, id) {
   var cartRow = document.createElement("div");
+  cartRow.dataset.itemId = id;
   cartRow.classList.add("cart-row");
   var cartItems = document.getElementsByClassName("cart-items")[0];
   var cartItemNames = cartItems.getElementsByClassName("cart-item-title");
